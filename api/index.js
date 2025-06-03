@@ -1,7 +1,7 @@
-// api/index.js
 const express = require('express');
 const chromium = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
+const isVercel = process.env.VERCEL === '1';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -17,11 +17,23 @@ app.post('/generate-pdf', async (req, res) => {
 
   let browser;
   try {
+    // Local development uses full puppeteer
+    let executablePath;
+    if (isVercel) {
+      executablePath = await chromium.executablePath();
+    } else {
+      // Use locally installed Chromium
+      const puppeteerFull = require('puppeteer');
+      executablePath = puppeteerFull.executablePath();
+    }
+
     browser = await puppeteer.launch({
-      args: [...chromium.args, '--hide-scrollbars', '--disable-web-security'],
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      args: isVercel 
+        ? [...chromium.args, '--hide-scrollbars', '--disable-web-security']
+        : ['--no-sandbox', '--disable-setuid-sandbox'],
+      defaultViewport: { width: 1920, height: 1080 },
+      executablePath,
+      headless: 'new',
       ignoreHTTPSErrors: true,
     });
 
@@ -66,11 +78,9 @@ app.get('/', (req, res) => {
   res.send("PDF Generator API is running. Send a POST request to /generate-pdf with a URL to generate a PDF.");
 });
 
-// Export the Express app for Vercel
 module.exports = app;
 
-// Only listen locally when not in Vercel environment
-if (process.env.VERCEL !== '1') {
+if (!process.env.IS_VERCEL) {
   app.listen(port, () => {
     console.log(`PDF Generator API listening at http://localhost:${port}`);
   });

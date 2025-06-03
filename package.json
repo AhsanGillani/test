@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node api/index.js",
-    "dev": "nodemon api/index.js"
+    "dev": "set PUPPETEER_SKIP_DOWNLOAD=true&& nodemon api/index.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +13,7 @@
   "dependencies": {
     "@sparticuz/chromium-min": "^133.0.0",
     "express": "^5.1.0",
+    "puppeteer": "^24.10.0",
     "puppeteer-core": "^24.10.0"
   },
   "devDependencies": {
