@@ -17,41 +17,40 @@ app.post('/generate-pdf', async (req, res) => {
 
   let browser;
   try {
-    // Local development uses full puppeteer
+    // Chromium path resolution that WORKS on Vercel
     let executablePath;
     if (isVercel) {
-      executablePath = await chromium.executablePath();
+      // Absolute path required for Vercel
+      executablePath = '/var/task/node_modules/@sparticuz/chromium-min/bin/chromium';
     } else {
-      // Use locally installed Chromium
-      const puppeteerFull = require('puppeteer');
-      executablePath = puppeteerFull.executablePath();
+      // Local development path
+      executablePath = require('puppeteer').executablePath();
     }
 
-    browser = await puppeteer.launch({
-      args: isVercel 
-        ? [...chromium.args, '--hide-scrollbars', '--disable-web-security']
-        : ['--no-sandbox', '--disable-setuid-sandbox'],
-      defaultViewport: { width: 1920, height: 1080 },
+    const launchOptions = {
+      args: [
+        ...(isVercel ? chromium.args : []),
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
+      ],
       executablePath,
-      headless: 'new',
+      headless: true,
       ignoreHTTPSErrors: true,
-    });
+    };
 
+    browser = await puppeteer.launch(launchOptions);
     const page = await browser.newPage();
-    await page.goto(url, { 
-      waitUntil: 'networkidle0',
-      timeout: 30000 
+    
+    await page.goto(url, {
+      waitUntil: 'networkidle2',
+      timeout: 30000
     });
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: {
-        top: '20mm',
-        right: '20mm',
-        bottom: '20mm',
-        left: '20mm'
-      }
+      margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' }
     });
 
     res.set({
@@ -68,9 +67,7 @@ app.post('/generate-pdf', async (req, res) => {
       details: error.message
     });
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    if (browser) await browser.close();
   }
 });
 
